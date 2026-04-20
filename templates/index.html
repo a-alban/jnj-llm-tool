@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JNJ LLM Tool</title>
+<style>
+:root{--bg:#0d1117;--surface:#161b22;--surface2:#1c2128;--border:#30363d;--accent:#58a6ff;--accent2:#3fb950;--warn:#f85149;--warn2:#e3b341;--text:#c9d1d9;--muted:#8b949e;--font:'Segoe UI',system-ui,sans-serif;--radius:8px;}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.6;min-height:100vh;}
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:54px;position:sticky;top:0;z-index:200;}
+.brand{display:flex;align-items:center;gap:12px;}
+.brand-name{font-size:15px;font-weight:700;letter-spacing:2px;color:var(--accent);}
+.brand-sep{width:1px;height:20px;background:var(--border);}
+.brand-sub{font-size:11px;color:var(--muted);}
+.header-status{font-size:11px;color:var(--muted);}
+.header-status span{color:var(--accent2);font-weight:600;}
+.layout{display:flex;min-height:calc(100vh - 54px);}
+.sidebar{width:260px;min-width:260px;background:var(--surface);border-right:1px solid var(--border);padding:20px 16px;display:flex;flex-direction:column;gap:20px;overflow-y:auto;}
+.stitle{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;}
+.upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:20px 12px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:rgba(88,166,255,.04);}
+.upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.upload-icon{font-size:22px;margin-bottom:4px;opacity:.4;}
+.upload-label{font-size:12px;color:var(--muted);}
+.upload-label strong{color:var(--accent);}
+.upload-formats{font-size:11px;color:var(--muted);margin-top:2px;}
+.goal-grid{display:flex;flex-direction:column;gap:6px;}
+.goal-btn{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 11px;cursor:pointer;text-align:left;transition:all .15s;color:var(--text);font-family:var(--font);font-size:12px;}
+.goal-btn:hover{border-color:var(--muted);}
+.goal-btn.active{border-color:var(--accent);background:rgba(88,166,255,.06);color:var(--accent);font-weight:600;}
+.goal-title{font-weight:600;margin-bottom:1px;}
+.goal-desc{font-size:11px;color:var(--muted);}
+.goal-btn.active .goal-desc{color:rgba(88,166,255,.6);}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;}
+.toggle-label{font-size:12px;}
+.toggle-label small{display:block;color:var(--muted);font-size:11px;margin-top:1px;}
+.toggle{position:relative;width:38px;height:21px;cursor:pointer;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle-track{position:absolute;inset:0;background:var(--border);border-radius:11px;transition:.2s;}
+.toggle input:checked+.toggle-track{background:var(--accent2);}
+.toggle-thumb{position:absolute;left:3px;top:3px;width:15px;height:15px;background:white;border-radius:50%;transition:.2s;}
+.toggle input:checked~.toggle-thumb{left:20px;}
+.model-grid{display:flex;gap:6px;}
+.model-btn{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:9px 6px;cursor:pointer;text-align:center;transition:all .15s;color:var(--text);font-family:var(--font);font-size:11px;font-weight:600;}
+.model-btn:hover{border-color:var(--muted);}
+.model-btn.active{border-color:var(--accent);background:rgba(88,166,255,.06);color:var(--accent);}
+.model-btn .model-icon{font-size:16px;margin-bottom:3px;}
+.run-btn{width:100%;padding:11px;border:none;border-radius:var(--radius);background:var(--accent);color:#0d1117;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;font-family:var(--font);}
+.run-btn:hover:not(:disabled){background:#79b8ff;transform:translateY(-1px);}
+.run-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.run-btn.loading{background:var(--surface2);color:var(--muted);border:1px solid var(--border);}
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.file-tabs-bar{background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:4px;min-height:42px;overflow-x:auto;flex-shrink:0;}
+.file-tab{display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:6px 6px 0 0;border:1px solid transparent;border-bottom:none;cursor:pointer;font-size:12px;color:var(--muted);white-space:nowrap;transition:all .15s;background:transparent;font-family:var(--font);}
+.file-tab:hover{color:var(--text);background:var(--surface2);}
+.file-tab.active{color:var(--text);background:var(--bg);border-color:var(--border);font-weight:600;}
+.file-tab .tab-name{max-width:160px;overflow:hidden;text-overflow:ellipsis;}
+.file-tab .tab-close{opacity:.5;font-size:14px;line-height:1;padding:0 2px;border:none;background:none;color:inherit;cursor:pointer;font-family:var(--font);}
+.file-tab .tab-close:hover{opacity:1;color:var(--warn);}
+.file-tab .tab-dot{width:7px;height:7px;border-radius:50%;background:var(--border);flex-shrink:0;}
+.file-tab .tab-dot.ready{background:var(--accent2);}
+.file-tab .tab-dot.loading{background:var(--accent);animation:pulse .8s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+.add-file-hint{font-size:11px;color:var(--muted);padding:0 8px;white-space:nowrap;}
+.file-panels{flex:1;overflow-y:auto;}
+.file-panel{display:none;}
+.file-panel.active{display:block;}
+.welcome{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;padding:48px;text-align:center;}
+.welcome-logo{font-size:44px;font-weight:700;letter-spacing:2px;color:var(--accent);margin-bottom:8px;opacity:.12;}
+.welcome h2{font-size:18px;font-weight:600;color:var(--text);margin-bottom:8px;}
+.welcome p{color:var(--muted);font-size:13px;max-width:380px;line-height:1.8;}
+.progress-screen{display:none;flex-direction:column;align-items:center;justify-content:center;padding:48px;text-align:center;min-height:50vh;}
+.progress-screen.active{display:flex;}
+.progress-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:5px;}
+.progress-sub{font-size:12px;color:var(--muted);margin-bottom:24px;}
+.progress-steps{display:flex;flex-direction:column;gap:8px;width:100%;max-width:320px;}
+.step{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:12px;}
+.step-icon{width:20px;text-align:center;}
+.step.done{border-color:var(--accent2);}
+.step.active{border-color:var(--accent);}
+.step-label{color:var(--muted);}
+.step.done .step-label,.step.active .step-label{color:var(--text);}
+.spinner{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.report-wrap{display:none;}
+.report-wrap.active{display:block;}
+.report-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:10px 28px;display:flex;align-items:center;justify-content:space-between;}
+.report-title-text{font-size:13px;font-weight:600;color:var(--text);}
+.report-meta{display:flex;align-items:center;gap:10px;}
+.report-ts{font-size:11px;color:var(--muted);}
+.model-tag{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;padding:2px 7px;border-radius:10px;background:rgba(88,166,255,.1);color:var(--accent);border:1px solid rgba(88,166,255,.3);}
+.tabs{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;display:flex;}
+.tab-btn{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;font-size:12px;font-family:var(--font);padding:10px 16px;transition:all .15s;}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);font-weight:600;}
+.tab-content{padding:24px 28px;}
+.tab-panel{display:none;}.tab-panel.active{display:block;}
+.slabel{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.mb24{margin-bottom:24px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;}
+.kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 10px;text-align:center;}
+.kpi-value{font-size:22px;font-weight:700;color:var(--accent);letter-spacing:-.5px;}
+.kpi-label{font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:1px;}
+.summary-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;font-size:13px;line-height:1.9;color:var(--text);}
+.ins-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;}
+.ins-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent2);border-radius:0 var(--radius) var(--radius) 0;padding:10px 14px;font-size:12px;}
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{text-align:left;padding:8px 12px;background:rgba(88,166,255,.06);color:var(--muted);font-weight:600;letter-spacing:.5px;border-bottom:1px solid var(--border);}
+td{padding:8px 12px;border-bottom:1px solid rgba(48,54,61,.5);vertical-align:top;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(88,166,255,.02);}
+.sheet-label{font-size:12px;font-weight:600;color:var(--accent);margin:16px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border);}
+.badge{display:inline-block;padding:2px 6px;border-radius:10px;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;}
+.b-high{background:rgba(248,81,73,.15);color:var(--warn);border:1px solid rgba(248,81,73,.3);}
+.b-medium{background:rgba(227,179,65,.15);color:var(--warn2);border:1px solid rgba(227,179,65,.3);}
+.b-low{background:rgba(63,185,80,.15);color:var(--accent2);border:1px solid rgba(63,185,80,.3);}
+.b-safe{background:rgba(63,185,80,.15);color:var(--accent2);border:1px solid rgba(63,185,80,.3);}
+.b-action{background:rgba(227,179,65,.15);color:var(--warn2);border:1px solid rgba(227,179,65,.3);}
+code{background:rgba(88,166,255,.08);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:11px;color:var(--accent);}
+.log-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;}
+.log-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;}
+.log-op{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent2);margin-bottom:3px;}
+.log-rat{font-size:12px;color:var(--text);margin-bottom:4px;}
+.log-meta{font-size:11px;color:var(--muted);}
+.dash-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.dash-iframe{width:100%;height:700px;border:none;display:block;}
+.feedback-panel{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-top:20px;}
+.feedback-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:3px;}
+.feedback-subtitle{font-size:11px;color:var(--muted);margin-bottom:10px;}
+.feedback-textarea{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font);font-size:13px;line-height:1.6;padding:10px;resize:vertical;min-height:75px;outline:none;transition:border-color .15s;}
+.feedback-textarea:focus{border-color:var(--accent);}
+.feedback-textarea::placeholder{color:var(--muted);}
+.feedback-actions{display:flex;align-items:center;gap:10px;margin-top:8px;}
+.refine-btn{padding:8px 18px;border:none;border-radius:6px;background:var(--accent2);color:#0d1117;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);transition:all .2s;}
+.refine-btn:hover:not(:disabled){background:#56d364;transform:translateY(-1px);}
+.refine-btn:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.refine-btn.loading{background:var(--surface);color:var(--muted);border:1px solid var(--border);}
+.update-badge{font-size:11px;color:var(--accent2);display:none;}
+.update-badge.visible{display:inline;}
+.history-panel{margin-top:16px;}
+.history-toggle{background:none;border:1px solid var(--border);border-radius:6px;padding:7px 12px;color:var(--muted);font-family:var(--font);font-size:12px;cursor:pointer;width:100%;text-align:left;}
+.history-toggle:hover{border-color:var(--muted);color:var(--text);}
+.history-list{margin-top:8px;display:none;flex-direction:column;gap:7px;}
+.history-item{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:10px 13px;}
+.history-role{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:2px;}
+.history-role.assistant{color:var(--accent2);}
+.history-content{font-size:12px;color:var(--text);}
+.empty{color:var(--muted);font-size:13px;padding:12px 0;}
+.toast{position:fixed;bottom:20px;right:20px;z-index:999;background:var(--warn);color:white;padding:12px 16px;border-radius:var(--radius);font-size:13px;max-width:360px;box-shadow:0 4px 20px rgba(0,0,0,.4);display:none;}
+.toast.visible{display:block;animation:fadeIn .2s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="brand">
+    <div class="brand-name">JNJ LLM TOOL</div>
+    <div class="brand-sep"></div>
+    <div class="brand-sub">Financial EDA Platform</div>
+  </div>
+  <div class="header-status" id="header-status">No files loaded</div>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div>
+      <div class="stitle">Add File</div>
+      <div class="upload-zone" id="upload-zone">
+        <input type="file" id="file-input" accept=".csv,.xlsx,.xls">
+        <div class="upload-icon">&#128194;</div>
+        <div class="upload-label"><strong>Click to upload</strong> or drag &amp; drop</div>
+        <div class="upload-formats">CSV &nbsp;&middot;&nbsp; XLSX &nbsp;&middot;&nbsp; XLS</div>
+      </div>
+    </div>
+    <div>
+      <div class="stitle">Model</div>
+      <div class="model-grid">
+        <button class="model-btn active" data-model="gemini" onclick="setModel(this)">
+          <div class="model-icon">&#9670;</div><div>Gemini Flash</div>
+        </button>
+        <button class="model-btn" data-model="claude" onclick="setModel(this)">
+          <div class="model-icon">&#9671;</div><div>Claude Sonnet</div>
+        </button>
+      </div>
+    </div>
+    <div>
+      <div class="stitle">Analysis Goal</div>
+      <div class="goal-grid">
+        <button class="goal-btn active" data-goal="financial" onclick="setGoal(this)">
+          <div class="goal-title">Financial Dashboard</div>
+          <div class="goal-desc">Executive reporting &amp; KPIs</div>
+        </button>
+        <button class="goal-btn" data-goal="forecasting" onclick="setGoal(this)">
+          <div class="goal-title">Forecasting Prep</div>
+          <div class="goal-desc">Time-series features</div>
+        </button>
+        <button class="goal-btn" data-goal="anomaly" onclick="setGoal(this)">
+          <div class="goal-title">Anomaly Detection</div>
+          <div class="goal-desc">Outlier identification</div>
+        </button>
+        <button class="goal-btn" data-goal="general" onclick="setGoal(this)">
+          <div class="goal-title">General EDA</div>
+          <div class="goal-desc">Broad exploration</div>
+        </button>
+      </div>
+    </div>
+    <div>
+      <div class="stitle">Cleaning</div>
+      <div class="toggle-row">
+        <div class="toggle-label">Apply Safe Cleaning<small>Trim, deduplicate, cast types</small></div>
+        <label class="toggle">
+          <input type="checkbox" id="clean-toggle" checked>
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+    </div>
+    <div>
+      <button class="run-btn" id="run-btn" disabled onclick="runAnalysis()">Run Analysis</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="file-tabs-bar" id="file-tabs-bar">
+      <span class="add-file-hint">Upload a file to get started</span>
+    </div>
+    <div class="file-panels" id="file-panels">
+      <div class="file-panel active" id="panel-welcome">
+        <div class="welcome">
+          <div class="welcome-logo">JNJ</div>
+          <h2>JNJ LLM Tool</h2>
+          <p>Upload one or more CSV or Excel files. Each file gets its own tab with its own dashboard, quality report, and feedback panel.</p>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let activeModel="gemini", activeGoal="financial", activeFileId=null;
+const files={};
+
+const fileInput=document.getElementById("file-input");
+const uploadZone=document.getElementById("upload-zone");
+fileInput.addEventListener("change",()=>{if(fileInput.files.length)handleFile(fileInput.files[0]);fileInput.value="";});
+uploadZone.addEventListener("dragover",e=>{e.preventDefault();uploadZone.classList.add("drag-over");});
+uploadZone.addEventListener("dragleave",()=>uploadZone.classList.remove("drag-over"));
+uploadZone.addEventListener("drop",e=>{e.preventDefault();uploadZone.classList.remove("drag-over");if(e.dataTransfer.files.length)handleFile(e.dataTransfer.files[0]);});
+
+async function handleFile(file){
+  const fid="f_"+Date.now();
+  files[fid]={filename:file.name,uploadId:null,uploadDone:false,sheets:[],selectedSheets:new Set(),iteration:1};
+  createTab(fid,file.name,"loading");
+  createPanel(fid,file.name);
+  switchTo(fid);
+  showState(fid,"progress");
+  const fd=new FormData(); fd.append("file",file);
+  try{
+    const res=await fetch("/api/upload",{method:"POST",body:fd});
+    const data=await res.json();
+    if(!res.ok||data.error){showToast(data.error||"Upload failed.");removeFile(fid);return;}
+    files[fid].uploadId=data.upload_id;
+    files[fid].uploadDone=true;
+    files[fid].sheets=data.sheets;
+    files[fid].selectedSheets=new Set(data.sheets.map(s=>s.name));
+    setDot(fid,"ready");
+    buildSheetList(fid);
+    showState(fid,"uploaded");
+    document.getElementById("run-btn").disabled=false;
+    updateStatus();
+  }catch(e){showToast("Upload error: "+e.message);removeFile(fid);}
+}
+
+function createTab(fid,name,status){
+  const bar=document.getElementById("file-tabs-bar");
+  const hint=bar.querySelector(".add-file-hint");
+  if(hint)hint.remove();
+  const t=document.createElement("button");
+  t.className="file-tab"; t.id="tab-"+fid;
+  t.onclick=()=>switchTo(fid);
+  t.innerHTML=`<span class="tab-dot ${status}" id="dot-${fid}"></span><span class="tab-name" title="${name}">${shortName(name)}</span><button class="tab-close" onclick="event.stopPropagation();removeFile('${fid}')" title="Close">&#x2715;</button>`;
+  bar.appendChild(t);
+}
+
+function createPanel(fid,name){
+  const c=document.getElementById("file-panels");
+  const p=document.createElement("div");
+  p.className="file-panel"; p.id="panel-"+fid;
+  p.innerHTML=`
+  <div id="progress-${fid}" class="progress-screen" style="display:none;">
+    <div class="progress-title">Uploading...</div>
+    <div class="progress-sub">Please wait</div>
+    <div class="progress-steps">
+      <div class="step active" id="step-up-${fid}"><div class="step-icon"><div class="spinner"></div></div><div class="step-label">Uploading file</div></div>
+    </div>
+  </div>
+  <div id="uploaded-${fid}" style="display:none;padding:24px 28px;">
+    <div class="slabel" style="margin-bottom:12px;">File ready — ${name}</div>
+    <div id="sheetlist-${fid}" style="display:flex;flex-direction:column;gap:6px;max-width:420px;"></div>
+    <p style="margin-top:16px;font-size:13px;color:var(--muted);">Pick a goal and model in the sidebar, then click <strong style="color:var(--text);">Run Analysis</strong>.</p>
+  </div>
+  <div id="analyzing-${fid}" class="progress-screen" style="display:none;">
+    <div class="progress-title">Analyzing ${shortName(name)}...</div>
+    <div class="progress-sub">Usually 20–40 seconds</div>
+    <div class="progress-steps">
+      <div class="step" id="step-profile-${fid}"><div class="step-icon" id="si-profile-${fid}"></div><div class="step-label">Computing profile</div></div>
+      <div class="step" id="step-clean-${fid}"><div class="step-icon" id="si-clean-${fid}"></div><div class="step-label">Applying cleaning</div></div>
+      <div class="step" id="step-llm-${fid}"><div class="step-icon" id="si-llm-${fid}"></div><div class="step-label">LLM analysis &amp; dashboard</div></div>
+    </div>
+  </div>
+  <div id="report-${fid}" class="report-wrap">
+    <div class="report-bar">
+      <div class="report-title-text" id="rtitle-${fid}">-</div>
+      <div class="report-meta">
+        <div class="model-tag" id="rtag-${fid}">-</div>
+        <div class="report-ts" id="rts-${fid}">-</div>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="showRTab('${fid}','overview',this)">Overview</button>
+      <button class="tab-btn" onclick="showRTab('${fid}','quality',this)">Data Quality</button>
+      <button class="tab-btn" onclick="showRTab('${fid}','cleaning',this)">Cleaning Log</button>
+      <button class="tab-btn" onclick="showRTab('${fid}','dashboard',this)">Dashboard</button>
+      <button class="tab-btn" onclick="showRTab('${fid}','feedback',this)">Feedback</button>
+    </div>
+    <div class="tab-content">
+      <div id="rtab-overview-${fid}" class="tab-panel active">
+        <div class="mb24"><div class="slabel">Executive Summary</div><div class="summary-card" id="rexec-${fid}">-</div></div>
+        <div class="mb24"><div class="slabel">Dataset Metrics</div><div class="kpi-grid" id="rkpi-${fid}"></div></div>
+        <div class="mb24"><div class="slabel">Key Insights</div><div class="ins-grid" id="rins-${fid}"></div></div>
+      </div>
+      <div id="rtab-quality-${fid}" class="tab-panel">
+        <div class="mb24"><div class="slabel">Data Quality Issues</div><div id="rissues-${fid}"></div></div>
+        <div class="mb24"><div class="slabel">Recommended Cleaning</div><div id="rrecs-${fid}"></div></div>
+      </div>
+      <div id="rtab-cleaning-${fid}" class="tab-panel">
+        <div class="mb24"><div class="slabel">Applied Cleaning Operations</div><div id="rlog-${fid}"></div></div>
+      </div>
+      <div id="rtab-dashboard-${fid}" class="tab-panel">
+        <div class="mb24"><div class="slabel">Interactive Dashboard</div>
+          <div class="dash-wrap"><iframe class="dash-iframe" id="rdash-${fid}" srcdoc=""></iframe></div>
+        </div>
+      </div>
+      <div id="rtab-feedback-${fid}" class="tab-panel">
+        <div class="mb24">
+          <div class="slabel">Refine Dashboard</div>
+          <div class="feedback-panel">
+            <div class="feedback-title">Give instructions to update the dashboard</div>
+            <div class="feedback-subtitle">The model will apply your changes and regenerate the charts</div>
+            <textarea class="feedback-textarea" id="rfb-${fid}" placeholder="e.g. Change the bar chart to a line chart. Focus on Revenue. Add a histogram..."></textarea>
+            <div class="feedback-actions">
+              <button class="refine-btn" id="rbtn-${fid}" onclick="runRefine('${fid}')">Update Dashboard</button>
+              <span class="update-badge" id="rbadge-${fid}">&#10003; Updated</span>
+            </div>
+          </div>
+          <div class="history-panel" id="rhpanel-${fid}" style="display:none">
+            <button class="history-toggle" onclick="toggleHist('${fid}')">Conversation history (<span id="rhcount-${fid}">0</span> messages)</button>
+            <div class="history-list" id="rhlist-${fid}"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  c.appendChild(p);
+}
+
+function buildSheetList(fid){
+  const f=files[fid];
+  const c=document.getElementById("sheetlist-"+fid);
+  if(!c)return;
+  c.innerHTML="";
+  f.sheets.forEach(s=>{
+    const div=document.createElement("div");
+    div.style.cssText="display:flex;align-items:center;justify-content:space-between;background:rgba(88,166,255,.06);border:1px solid var(--accent);border-radius:6px;padding:7px 11px;cursor:pointer;";
+    div.innerHTML=`<span style="font-size:12px;font-weight:500;">${s.name}</span><span style="font-size:11px;color:var(--muted);">${s.rows.toLocaleString()} x ${s.cols}</span>`;
+    div.onclick=()=>{
+      if(f.selectedSheets.has(s.name)){
+        if(f.selectedSheets.size===1)return;
+        f.selectedSheets.delete(s.name);
+        div.style.borderColor="var(--border)";div.style.background="transparent";
+      }else{
+        f.selectedSheets.add(s.name);
+        div.style.borderColor="var(--accent)";div.style.background="rgba(88,166,255,.06)";
+      }
+    };
+    c.appendChild(div);
+  });
+}
+
+function showState(fid,state){
+  ["progress","uploaded","analyzing"].forEach(s=>{
+    const el=document.getElementById(s+"-"+fid);
+    if(!el)return;
+    el.style.display=state===s?(s==="uploaded"?"block":"flex"):"none";
+  });
+  const r=document.getElementById("report-"+fid);
+  if(r) r.classList.toggle("active",state==="report");
+}
+
+function switchTo(fid){
+  activeFileId=fid;
+  document.getElementById("panel-welcome").classList.remove("active");
+  document.querySelectorAll(".file-panel").forEach(p=>p.classList.remove("active"));
+  document.querySelectorAll(".file-tab").forEach(t=>t.classList.remove("active"));
+  document.getElementById("panel-"+fid).classList.add("active");
+  document.getElementById("tab-"+fid).classList.add("active");
+  document.getElementById("run-btn").disabled=!files[fid]?.uploadDone;
+}
+
+function removeFile(fid){
+  document.getElementById("tab-"+fid)?.remove();
+  document.getElementById("panel-"+fid)?.remove();
+  delete files[fid];
+  const rem=Object.keys(files);
+  if(rem.length>0){switchTo(rem[rem.length-1]);}
+  else{
+    activeFileId=null;
+    document.getElementById("panel-welcome").classList.add("active");
+    document.getElementById("run-btn").disabled=true;
+    const bar=document.getElementById("file-tabs-bar");
+    if(!bar.querySelector(".add-file-hint")){
+      const h=document.createElement("span");h.className="add-file-hint";h.textContent="Upload a file to get started";bar.appendChild(h);
+    }
+  }
+  updateStatus();
+}
+
+function setDot(fid,status){const el=document.getElementById("dot-"+fid);if(el)el.className="tab-dot "+status;}
+
+async function runAnalysis(){
+  if(!activeFileId||!files[activeFileId]?.uploadDone)return;
+  const fid=activeFileId, f=files[fid];
+  showState(fid,"analyzing"); setDot(fid,"loading");
+  document.getElementById("run-btn").disabled=true;
+  document.getElementById("run-btn").classList.add("loading");
+  document.getElementById("run-btn").textContent="Analyzing...";
+  await animStep("profile-"+fid,400);
+  const applyClean=document.getElementById("clean-toggle").checked;
+  if(applyClean) await animStep("clean-"+fid,400); else markSkipped("clean-"+fid);
+  markActive("llm-"+fid);
+  try{
+    const res=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({upload_id:f.uploadId,goal:activeGoal,model:activeModel,apply_cleaning:applyClean,selected_sheets:[...f.selectedSheets]})});
+    const data=await res.json();
+    if(!res.ok||data.error){showToast(data.error||"Analysis failed.");showState(fid,"uploaded");setDot(fid,"ready");resetBtn();return;}
+    markDone("llm-"+fid);
+    f.iteration=1;
+    renderReport(fid,data,activeModel);
+    showState(fid,"report");
+    setDot(fid,"ready");
+  }catch(e){showToast("Error: "+e.message);showState(fid,"uploaded");setDot(fid,"ready");}
+  resetBtn();
+}
+
+async function runRefine(fid){
+  const f=files[fid]; if(!f)return;
+  const feedback=document.getElementById("rfb-"+fid).value.trim();
+  if(!feedback){showToast("Please type your instructions first.");return;}
+  const btn=document.getElementById("rbtn-"+fid);
+  btn.disabled=true;btn.classList.add("loading");btn.textContent="Updating...";
+  document.getElementById("rbadge-"+fid).classList.remove("visible");
+  try{
+    const res=await fetch("/api/refine",{method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({upload_id:f.uploadId,feedback,model:activeModel,iteration:f.iteration})});
+    const data=await res.json();
+    if(!res.ok||data.error){showToast(data.error||"Update failed.");return;}
+    f.iteration=data.iteration||f.iteration+1;
+    document.getElementById("rdash-"+fid).srcdoc=
+      `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;background:#0d1117;}</style></head><body>${data.plotly_html||""}</body></html>`;
+    addHistory(fid,feedback,data.summary||"Dashboard updated.",data.timestamp||"");
+    document.getElementById("rfb-"+fid).value="";
+    document.getElementById("rbadge-"+fid).classList.add("visible");
+    showRTab(fid,"dashboard",null);
+    showToast("Dashboard updated!");
+  }catch(e){showToast("Error: "+e.message);}
+  btn.disabled=false;btn.classList.remove("loading");btn.textContent="Update Dashboard";
+}
+
+function addHistory(fid,u,a,ts){
+  const panel=document.getElementById("rhpanel-"+fid);
+  const list=document.getElementById("rhlist-"+fid);
+  if(!panel||!list)return;
+  panel.style.display="block";
+  const item=document.createElement("div");
+  item.className="history-item";
+  item.innerHTML=`<div class="history-role">You &nbsp;&middot;&nbsp; ${ts}</div><div class="history-content">${u}</div><div class="history-role assistant" style="margin-top:7px;">Assistant</div><div class="history-content">${a}</div>`;
+  list.prepend(item);
+  document.getElementById("rhcount-"+fid).textContent=list.querySelectorAll(".history-item").length;
+}
+
+function toggleHist(fid){
+  const l=document.getElementById("rhlist-"+fid);
+  if(!l)return;
+  l.style.display=l.style.display==="flex"?"none":"flex";
+  l.style.flexDirection="column";
+}
+
+function renderReport(fid,data,model){
+  g("rtitle-"+fid).textContent=data.report_title||"JNJ LLM Tool Report";
+  g("rts-"+fid).textContent=data.timestamp||"";
+  g("rtag-"+fid).textContent=model==="gemini"?"Gemini 2.5 Flash":"Claude Sonnet";
+  g("rexec-"+fid).textContent=data.executive_summary||"-";
+  const m=data.metrics||{};
+  g("rkpi-"+fid).innerHTML=[kpi(m.sheets,"Sheets"),kpi(fmt(m.rows),"Rows"),kpi(m.cols,"Columns"),kpi(fmt(m.duplicates),"Duplicates"),kpi(m.missing_avg+"%","Missing"),kpi(m.cleaning_ops,"Cleaning Ops")].join("");
+  const ins=data.global_insights||[];
+  g("rins-"+fid).innerHTML=ins.length?ins.map(i=>`<div class="ins-card">${i}</div>`).join(""):'<div class="ins-card empty">No insights returned.</div>';
+  g("rissues-"+fid).innerHTML=buildIssues(data.per_sheet||{});
+  g("rrecs-"+fid).innerHTML=buildRecs(data.per_sheet||{});
+  const log=data.cleaning_log||[];
+  g("rlog-"+fid).innerHTML=log.length?`<div class="log-grid">${log.map(e=>`<div class="log-card"><div class="log-op">${e.operation||""}</div><div class="log-rat">${e.rationale||""}</div><div class="log-meta">Sheet: ${e.sheet||""} | Cells: ${e.cells_changed||0} | Rows dropped: ${e.rows_dropped||0}</div></div>`).join("")}</div>`:'<p class="empty">No cleaning operations were applied.</p>';
+  g("rdash-"+fid).srcdoc=`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{margin:0;background:#0d1117;}</style></head><body>${data.plotly_html||""}</body></html>`;
+  showRTab(fid,"overview",document.querySelector("#panel-"+fid+" .tab-btn"));
+}
+
+function showRTab(fid,name,btn){
+  const p=document.getElementById("panel-"+fid); if(!p)return;
+  p.querySelectorAll(".tab-panel").forEach(x=>x.classList.remove("active"));
+  p.querySelectorAll(".tab-btn").forEach(x=>x.classList.remove("active"));
+  const tp=document.getElementById(`rtab-${name}-${fid}`); if(tp)tp.classList.add("active");
+  if(btn)btn.classList.add("active");
+  else p.querySelectorAll(".tab-btn").forEach(b=>{if(b.textContent.toLowerCase().includes(name))b.classList.add("active");});
+}
+
+function setModel(btn){document.querySelectorAll(".model-btn").forEach(b=>b.classList.remove("active"));btn.classList.add("active");activeModel=btn.dataset.model;}
+function setGoal(btn){document.querySelectorAll(".goal-btn").forEach(b=>b.classList.remove("active"));btn.classList.add("active");activeGoal=btn.dataset.goal;}
+
+function buildIssues(per){let h="";for(const[s,sd]of Object.entries(per)){const is=sd.data_quality_issues||[];if(!is.length)continue;h+=`<div class="sheet-label">${s}</div><div class="table-wrap"><table><thead><tr><th>Type</th><th>Severity</th><th>Evidence</th><th>Suggested Action</th><th>Status</th></tr></thead><tbody>${is.map(i=>`<tr><td><code>${i.type||""}</code></td><td>${sbadge(i.severity)}</td><td>${i.evidence||""}</td><td>${i.suggested_action||""}</td><td>${abadge(i.requires_user_approval)}</td></tr>`).join("")}</tbody></table></div>`;}return h||'<p class="empty">No data quality issues flagged.</p>';}
+function buildRecs(per){let h="";for(const[s,sd]of Object.entries(per)){const r=sd.recommended_cleaning||[];if(!r.length)continue;h+=`<div class="sheet-label">${s}</div><div class="table-wrap"><table><thead><tr><th>Operation</th><th>Columns</th><th>Rationale</th><th>Status</th></tr></thead><tbody>${r.map(x=>`<tr><td><code>${x.operation||""}</code></td><td>${(x.columns||[]).join(", ")}</td><td>${x.why||""}</td><td>${abadge(x.requires_user_approval)}</td></tr>`).join("")}</tbody></table></div>`;}return h||'<p class="empty">No additional cleaning recommended.</p>';}
+function kpi(v,l){return `<div class="kpi-card"><div class="kpi-value">${v??"-"}</div><div class="kpi-label">${l}</div></div>`;}
+function fmt(n){return n!=null?n.toLocaleString():"-";}
+function sbadge(s){const m={high:"b-high",medium:"b-medium",low:"b-low"};return `<span class="badge ${m[s?.toLowerCase()]||"b-low"}">${s||"low"}</span>`;}
+function abadge(r){return r?'<span class="badge b-action">Approval Required</span>':'<span class="badge b-safe">Safe</span>';}
+function shortName(n){return n.length>22?n.slice(0,20)+"...":n;}
+function updateStatus(){const c=Object.keys(files).length;g("header-status").innerHTML=c===0?"No files loaded":`<span>${c}</span> file${c>1?"s":""} loaded`;}
+function resetBtn(){const b=g("run-btn");b.disabled=!activeFileId||!files[activeFileId]?.uploadDone;b.classList.remove("loading");b.textContent="Run Analysis";}
+function g(id){return document.getElementById(id);}
+function markActive(id){const s=g("step-"+id);if(s){s.classList.add("active");}const i=g("si-"+id);if(i)i.innerHTML='<div class="spinner"></div>';}
+function markDone(id){const s=g("step-"+id);if(s){s.classList.remove("active");s.classList.add("done");}const i=g("si-"+id);if(i)i.textContent="";}
+function markSkipped(id){const i=g("si-"+id);if(i)i.textContent="-";}
+async function animStep(id,ms){markActive(id);await new Promise(r=>setTimeout(r,ms));markDone(id);}
+function showToast(msg){const t=g("toast");t.textContent=msg;t.classList.add("visible");setTimeout(()=>t.classList.remove("visible"),4000);}
+</script>
+</body>
+</html>
